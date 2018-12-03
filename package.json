@@ -1,0 +1,14 @@
+{
+  "name": "polly-ui-website",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "parcel": "parcel"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "polly-ui": "file:../polly-ui"
+  }
+}
