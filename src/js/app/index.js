@@ -1,33 +1,70 @@
-const SPEED = 10
+import { moveAsteroids, moveForward, moveBackward, turnLeft, turnRight, start } from "../res/state"
+
+//https://opengameart.org/content/space-shooter-ship-and-items
+import ShipImg from "../images/ship.png"
+import Asteroid1 from '../images/asteroid1.png'
+import Asteroid2 from '../images/asteroid2.png'
+import Asteroid3 from '../images/asteroid3.png'
+import Asteroid4 from '../images/asteroid4.png'
+const Asteroids = [
+  Asteroid1,
+  Asteroid2,
+  Asteroid3,
+  Asteroid4
+]
 
 export default screen => {
   const {
     background,
-    container
+    container,
+    fps,
+    anchor,
+    position,
+    textColor,
+    list,
+    state$,
+    adapter,
+    MATCH,
+    onRender,
+    setDirty,
+    onClick,
+    canvas
   } = screen
+  state$.assign("scale", canvas.getRatio())
+  onClick(() => {
+    start(state$, screen)
+  })
+  onRender(ms => {
+    moveAsteroids(state$, screen.bounds, ms)
+    setDirty()
+  })
   background("black")
   ship(screen)
+  container(MATCH, MATCH, () => {
+    adapter(state$.prop("asteroids"), asteroid, false)
+  })
+  fps()
 }
 
-const wrap = (screen, view, props) => {
-  let { x, y, rotation } = props
-  if(x < - view.bounds.width / 2 - screen.bounds.width / 2) {
-    x = screen.bounds.width / 2 + view.bounds.width / 2
-  }
-  if(x > screen.bounds.width / 2 + view.bounds.width / 2) {
-    x = - view.bounds.width / 2 - screen.bounds.width / 2
-  }
-  if(y < - view.bounds.height / 2 - screen.bounds.height / 2) {
-    y = screen.bounds.height / 2 + view.bounds.height / 2
-  }
-  if(y > screen.bounds.height / 2 + view.bounds.height / 2) {
-    y = - view.bounds.height / 2 - screen.bounds.height / 2
-  }
-  return {
-    x,
-    y,
-    rotation
-  }
+const asteroid = (screen, asteroid) => {
+  const {
+    container,
+    background,
+    position,
+    anchor,
+    state$,
+    text,
+    velocity,
+    WRAP,
+    src
+  } = screen
+  container(asteroid.width, asteroid.height, view => {
+    background("blue")
+    src(Asteroids[asteroid.image], "trim")
+    view.x = asteroid.x
+    view.y = asteroid.y
+    view.rotation = asteroid.rotation
+  })
 }
 
 const ship = screen => {
@@ -39,41 +76,34 @@ const ship = screen => {
     state$,
     observe,
     onKeyPressed,
-    PERCENT
+    PERCENT,
+    visibility,
+    text,
+    src
   } = screen
-  container(50, 50, ship => {
+  const { ship } = state$.get()
+  container(ship.width, ship.height, view => {
+    background("blue")
+    observe(state$.prop("isPlaying"), visibility)
     onKeyPressed({
-      up : () => {
-        const { ship : props } = state$.get()
-        state$.assign("ship", wrap(screen, ship, {
-          x : props.x + Math.sin(props.rotation) * SPEED,
-          y : props.y - Math.cos(props.rotation) * SPEED,
-          rotation  :props.rotation
-        }))
+      up : ms => {
+        moveForward(state$, screen.bounds, view.bounds, ms)
       },
-      right : () => {
-        state$.assign("ship", "rotation", state$.get().ship.rotation + 1 / 90 * SPEED)
+      right : ms => {
+        turnRight(state$, ms)
       },
-      down : () => {
-        const { ship : props } = state$.get()
-        state$.assign("ship", wrap(screen, ship, {
-          x : props.x - Math.sin(props.rotation) * SPEED,
-          y : props.y + Math.cos(props.rotation) * SPEED,
-          rotation  :props.rotation
-        }))
+      down : ms => {
+        moveBackward(state$, screen.bounds, view.bounds, ms)
       },
-      left : () => {
-        state$.assign("ship", "rotation", state$.get().ship.rotation - 1 / 90 * SPEED)
+      left : ms => {
+        turnLeft(state$, ms)
       }
     })
-    background("white")
-    anchor(.5, .5)
-    position(.5, .5)
+    src(ShipImg, "trim")
     observe(state$.prop("ship"), pos => {
-      ship.x = pos.x
-      ship.y = pos.y
-      ship.rotation = pos.rotation
-      screen.setDirty()
+      view.x = pos.x
+      view.y = pos.y
+      view.rotation = pos.rotation
     })
   })
 }
