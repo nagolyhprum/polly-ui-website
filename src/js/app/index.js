@@ -16,6 +16,9 @@ const Asteroids = [
 
 export default screen => {
   const {
+    WRAP,
+    observe,
+    text,
     background,
     container,
     fps,
@@ -30,23 +33,31 @@ export default screen => {
     setDirty,
     onClick,
     canvas,
-    onKeyPressed
+    onKeyPressed,
+    clip,
+    margin
   } = screen
-  state$.assign("scale", canvas.getRatio())
   onClick(() => {
     start(state$, screen)
   })
   onRender(ms => {
-    update(state$, screen.bounds, ms)
+    update(state$, screen, ms)
     setDirty()
   })
   background("white")
-  ship(screen)
-  container(MATCH, MATCH, () => {
-    adapter(state$.prop("asteroids"), asteroid, false)
-  })
-  container(MATCH, MATCH, () => {
-    adapter(state$.prop("bullets"), bullet, false)
+  const minus200 = name => (view, screen) => ({ [name] : screen.bounds[name] - 200 })
+  container(minus200, minus200, view => {
+    view.x = 100
+    view.y = 100
+    background("red")
+    ship(screen)
+    container(MATCH, MATCH, () => {
+      adapter(state$.prop("asteroids"), asteroid, false)
+    })
+    container(MATCH, MATCH, () => {
+      adapter(state$.prop("bullets"), bullet, false)
+    })
+    clip()
   })
   fps()
   onKeyPressed({
@@ -65,6 +76,13 @@ export default screen => {
     space : ms => {
       shoot(state$)
     }
+  })
+  container(WRAP, WRAP, () => {
+    observe(state$.prop("ship", "health"), text)
+  })
+  container(WRAP, WRAP, view => {
+    view.y = 100
+    observe(state$.prop("ship", "shield"), text)
   })
 }
 
@@ -126,7 +144,7 @@ const ship = screen => {
   } = screen
   const { ship } = state$.get()
   container(ship.width, ship.height, view => {
-    //background("blue")
+    // background("blue")
     observe(state$.prop("isPlaying"), visibility)
     src(ShipImg, "trim")
     observe(state$.prop("ship"), pos => {
