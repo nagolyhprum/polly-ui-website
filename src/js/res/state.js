@@ -2,38 +2,43 @@ import {
   assign
 } from 'polly-ui'
 
+const ASTEROID_COUNT = 3
+const ASTEROID_SIZES = 3
+const ASTEROID_LARGE = 64
 const SHIP = 50
-const ASTEROID_LARGE = 50
-const BULLET = 50 / 8
+const BULLET = ASTEROID_LARGE / Math.pow(2, ASTEROID_SIZES)
 const SPEED = 300
 
 const UPGRADES = {
   weapons : {
-    big : true, //done
-    back : true, //done
-    sides : true, //done
-    fast : true, //done
+    back : false, //done
+    sides : false, //done
+    //big : false, //done
+    //fast : false, //done
     //HOMING MISSILE
     //DISTANCE
   },
   movement : {
-    back : true, //done
-    friction : true, //done
-    phase : true, //done
-    fast : true //done
+    back : false, //done
+    friction : false, //done
+    //phase : false, //done
+    //fast : false //done
     //"light speed"
   },
   defense : {
-    shield : true, //done
-    armor : true, //done
-    orbital : false,
-    bounce : false
+    shield : false, //done
+    armor : false, //done
+    //orbital : false,
+    //bounce : false
+    //smaller
   }
 }
 
+const LEFT = 200
+
 const getBounds = screen => ({
-  width : screen.bounds.width - 200,
-  height : screen.bounds.height - 200
+  width : screen.bounds.width - LEFT,
+  height : screen.bounds.height
 })
 
 const wrap = (screen, view, props) => {
@@ -65,7 +70,7 @@ const addAsteroids = (
   range = 50,
   size = ASTEROID_LARGE
 ) => {
-  state$.assign("asteroids", state$.get().asteroids.concat(Array.from({ length : 5 }).map(() => {
+  state$.assign("asteroids", state$.get().asteroids.concat(Array.from({ length : ASTEROID_COUNT }).map(() => {
     const length = min + Math.random() * range
     const position = Math.random() * 2 * Math.PI
     const velocity = Math.random() * 2 * Math.PI
@@ -175,7 +180,7 @@ const detectAsteroidBulletCollisions = (state$, screen, ms) => {
       const asteroid = collision[1]
       state$.assign("bullets", bullets.filter(it => it !== bullet))
       state$.assign("asteroids", asteroids.filter(it => it !== asteroid))
-      if(asteroid.width * 4 > ASTEROID_LARGE) {
+      if(asteroid.width * Math.pow(2, ASTEROID_SIZES - 1) > ASTEROID_LARGE) {
         addAsteroids(
           state$,
           asteroid.x + asteroid.width / 2, //cx
@@ -193,12 +198,12 @@ const detectAsteroidShipCollisions = (state$, screen, ms) => {
   let collision
   do {
     const { asteroids, bullets, ship, upgrades } = state$.get()
-    collision = getCollision([ship], asteroids.filter(asteroid => !upgrades.movement.phase || asteroid.width === ASTEROID_LARGE / 4))
+    collision = getCollision([ship], asteroids)
     if(collision) {
       const ship = collision[0]
       const asteroid = collision[1]
       state$.assign("asteroids", asteroids.filter(it => it !== asteroid))
-      const damage = upgrades.defense.armor ? 1 : 5
+      const damage = upgrades.defense.armor ? 3 : 5
       if(upgrades.defense.shield && ship.shield) {
         state$.assign("ship", "shield", Math.max(ship.shield - damage, 0))
       }
@@ -206,13 +211,14 @@ const detectAsteroidShipCollisions = (state$, screen, ms) => {
         state$.assign("ship", "health", ship.health - (damage - ship.shield))
       }
 
-      const dx = ship.x - asteroid.x
-      const dy = ship.y - asteroid.y
+      if(!upgrades.movement.friction) {
+        const dx = ship.x - asteroid.x
+        const dy = ship.y - asteroid.y
+        state$.assign("ship", "vx", ship.vx + dx)
+        state$.assign("ship", "vy", ship.vy + dy)
+      }
 
-      state$.assign("ship", "vx", ship.vx + dx)
-      state$.assign("ship", "vy", ship.vy + dy)
-
-      if(asteroid.width * 4 > ASTEROID_LARGE) {
+      if(asteroid.width * 8 > ASTEROID_LARGE) {
         addAsteroids(
           state$,
           asteroid.x + asteroid.width / 2, //cx
@@ -236,13 +242,13 @@ export const update = (state$, screen, ms) => {
   detectCollisions(state$, screen, ms)
   const { upgrades, ship } = state$.get()
   if(upgrades.defense.shield) {
-    state$.assign("ship", "shield", Math.min(ship.shield + ms / 1000, 5))
+    state$.assign("ship", "shield", Math.min(ship.shield + ms / 1000, 3))
   }
 }
 
 export const moveForward = (state$, screen, ms) => {
   const { ship, upgrades } = state$.get()
-  const speed = (upgrades.movement.friction ? SPEED * 1000 / 60 : SPEED) * (upgrades.movement.fast ? 2 : 1)
+  const speed = (upgrades.movement.friction ? SPEED * 1000 / 60 : SPEED)
   state$.assign("ship", "vx", ship.vx + Math.sin(ship.rotation) * speed * ms / 1000)
   state$.assign("ship", "vy", ship.vy - Math.cos(ship.rotation) * speed * ms / 1000)
 }
@@ -250,7 +256,7 @@ export const moveForward = (state$, screen, ms) => {
 export const moveBackward = (state$, screen, ms) => {
   const { ship, upgrades } = state$.get()
   if(upgrades.movement.back) {
-    const speed = (upgrades.movement.friction ? SPEED * 1000 / 60 : SPEED) * (upgrades.movement.fast ? 2 : 1)
+    const speed = (upgrades.movement.friction ? SPEED * 1000 / 60 : SPEED)
     state$.assign("ship", "vx", ship.vx - Math.sin(ship.rotation) * speed * ms / 1000)
     state$.assign("ship", "vy", ship.vy + Math.cos(ship.rotation) * speed * ms / 1000)
   }
@@ -258,15 +264,29 @@ export const moveBackward = (state$, screen, ms) => {
 
 export const turnLeft = (state$, ms) => {
   const {ship, upgrades} = state$.get()
-  state$.assign("ship", "rotation", ship.rotation - 1 / 90 * SPEED * ms / 1000 * (upgrades.movement.speed ? 2 : 1))
+  state$.assign("ship", "rotation", ship.rotation - 1 / 90 * SPEED * ms / 1000)
 }
 
 export const turnRight = (state$, ms) => {
   const {ship, upgrades} = state$.get()
-  state$.assign("ship", "rotation", ship.rotation + 1 / 90 * SPEED * ms / 1000 * (upgrades.movement.speed ? 2 : 1))
+  state$.assign("ship", "rotation", ship.rotation + 1 / 90 * SPEED * ms / 1000)
 }
 
 export const start = (state$, screen) => {
+  state$.assign("isPlaying", true)
+  state$.assign("ship", "x", getBounds(screen).width / 2 - SHIP / 2)
+  state$.assign("ship", "y", getBounds(screen).height / 2 - SHIP / 2)
+  state$.assign("ship", "vx", 0)
+  state$.assign("ship", "vy", 0)
+  state$.assign("ship", "health", 100)
+  state$.assign("ship", "shield", 0)
+  state$.assign("ship", "rotation", 0)
+  state$.assign("bullets", [])
+  state$.assign("asteroids", [])
+  addAsteroids(state$, getBounds(screen).width / 2, getBounds(screen).height / 2)
+}
+
+export const restart = (state$, screen) => {
   state$.assign("isPlaying", true)
   state$.assign("ship", "x", getBounds(screen).width / 2 - SHIP / 2)
   state$.assign("ship", "y", getBounds(screen).height / 2 - SHIP / 2)
@@ -283,7 +303,7 @@ export const start = (state$, screen) => {
 
 const generateBullet = (state$, theta) => {
   const { ship, upgrades } = state$.get()
-  const size = upgrades.weapons.big ? BULLET * 2 : BULLET
+  const size = BULLET
   const dx = Math.sin(theta)
   const dy = -Math.cos(theta)
   state$.push("bullets", {
@@ -301,7 +321,7 @@ const generateBullet = (state$, theta) => {
 export const shoot = (state$) => {
   const { ship, upgrades } = state$.get()
   if(ship.cooldown <= 0) {
-    state$.assign("ship", "cooldown", upgrades.weapons.fast ? 100 : 300)
+    state$.assign("ship", "cooldown", 600)
     generateBullet(state$, ship.rotation)
     if(upgrades.weapons.back) {
       generateBullet(state$, ship.rotation + Math.PI)

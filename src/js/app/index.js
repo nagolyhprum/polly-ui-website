@@ -31,24 +31,18 @@ export default screen => {
     MATCH,
     onRender,
     setDirty,
-    onClick,
     canvas,
     onKeyPressed,
     clip,
     margin
   } = screen
-  onClick(() => {
-    start(state$, screen)
-  })
   onRender(ms => {
     update(state$, screen, ms)
     setDirty()
   })
-  background("white")
-  const minus200 = name => (view, screen) => ({ [name] : screen.bounds[name] - 200 })
-  container(minus200, minus200, view => {
-    view.x = 100
-    view.y = 100
+  background("black")
+  container(MATCH, MATCH, view => {
+    margin(0, 0, 0, 200)
     background("red")
     ship(screen)
     container(MATCH, MATCH, () => {
@@ -57,6 +51,7 @@ export default screen => {
     container(MATCH, MATCH, () => {
       adapter(state$.prop("bullets"), bullet, false)
     })
+    upgrades(screen)
     clip()
   })
   fps()
@@ -78,11 +73,88 @@ export default screen => {
     }
   })
   container(WRAP, WRAP, () => {
+    textColor("white")
     observe(state$.prop("ship", "health"), text)
   })
   container(WRAP, WRAP, view => {
     view.y = 100
+    textColor("white")
     observe(state$.prop("ship", "shield"), text)
+  })
+}
+
+const upgrades = screen => {
+
+  const upgrades = [[{
+    name : "Side Guns",
+    category : "weapons",
+    subcategory : "sides"
+  }, {
+    name : "Rear Gun",
+    category : "weapons",
+    subcategory : "back"
+  }], [{
+    name : "Front Thruster",
+    category : "movement",
+    subcategory : "back"
+  }, {
+    name : "Friction",
+    category : "movement",
+    subcategory : "friction"
+  }], [{
+    name : "Shield",
+    category : "defense",
+    subcategory : "shield"
+  }, {
+    name : "Armor Plating",
+    category : "defense",
+    subcategory : "armor"
+  }]]
+
+  const  {
+    MATCH,
+    container,
+    background,
+    onClick,
+    state$,
+    visibility,
+    observe,
+    linear,
+    weight,
+    margin,
+    padding,
+    text,
+    isEnabled,
+    textColor
+  } = screen
+  container(MATCH, MATCH, () => {
+    linear(16)
+    background("green")
+    observe(state$.prop("asteroids"), asteroids => {
+      visibility(!asteroids.length)
+    })
+    padding(16)
+    upgrades.forEach(types => {
+      container(MATCH, 0, () => {
+        linear(16, 'horizontal')
+        weight(1)
+        types.forEach(upgrade => {
+          container(0, MATCH, () => {
+            weight(1)
+            background("blue")
+            text(upgrade.name)
+            textColor("white")
+            observe(state$.prop("upgrades"), upgrades => {
+              isEnabled(!upgrades[upgrade.category][upgrade.subcategory])
+            })
+            onClick(() => {
+              state$.assign("upgrades", upgrade.category, upgrade.subcategory, true)
+              start(state$, screen)
+            })
+          })
+        })
+      })
+    })
   })
 }
 
