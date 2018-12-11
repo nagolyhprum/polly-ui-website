@@ -2,6 +2,9 @@ import {
   assign
 } from 'polly-ui'
 
+const WIDTH = 640
+const HEIGHT = 480
+
 const ASTEROID_COUNT = 3
 const ASTEROID_SIZES = 3
 const ASTEROID_LARGE = 64
@@ -37,8 +40,8 @@ const UPGRADES = {
 const LEFT = 200
 
 const getBounds = screen => ({
-  width : screen.bounds.width - LEFT,
-  height : screen.bounds.height
+  width : WIDTH,
+  height : HEIGHT
 })
 
 const wrap = (screen, view, props) => {
@@ -103,8 +106,7 @@ export default {
   },
   upgrades : UPGRADES,
   asteroids : [],
-  bullets : [],
-  isPlaying : false
+  bullets : []
 }
 
 const moveObjects = (state$, screen, ms) => {
@@ -208,7 +210,12 @@ const detectAsteroidShipCollisions = (state$, screen, ms) => {
         state$.assign("ship", "shield", Math.max(ship.shield - damage, 0))
       }
       if(ship.shield - damage <= 0) {
-        state$.assign("ship", "health", ship.health - (damage - ship.shield))
+        const rem = ship.health - (damage - ship.shield)
+        if(rem > 0) {
+          state$.assign("ship", "health", rem)
+        } else {
+          restart(state$, screen)
+        }
       }
 
       if(!upgrades.movement.friction) {
@@ -218,7 +225,7 @@ const detectAsteroidShipCollisions = (state$, screen, ms) => {
         state$.assign("ship", "vy", ship.vy + dy)
       }
 
-      if(asteroid.width * 8 > ASTEROID_LARGE) {
+      if(asteroid.width * Math.pow(2, ASTEROID_SIZES - 1) > ASTEROID_LARGE) {
         addAsteroids(
           state$,
           asteroid.x + asteroid.width / 2, //cx
@@ -271,9 +278,7 @@ export const turnRight = (state$, ms) => {
   const {ship, upgrades} = state$.get()
   state$.assign("ship", "rotation", ship.rotation + 1 / 90 * SPEED * ms / 1000)
 }
-
-export const start = (state$, screen) => {
-  state$.assign("isPlaying", true)
+const zeroOut = (state$, screen) => {
   state$.assign("ship", "x", getBounds(screen).width / 2 - SHIP / 2)
   state$.assign("ship", "y", getBounds(screen).height / 2 - SHIP / 2)
   state$.assign("ship", "vx", 0)
@@ -283,22 +288,15 @@ export const start = (state$, screen) => {
   state$.assign("ship", "rotation", 0)
   state$.assign("bullets", [])
   state$.assign("asteroids", [])
+}
+
+export const start = (state$, screen) => {
+  zeroOut(state$, screen)
   addAsteroids(state$, getBounds(screen).width / 2, getBounds(screen).height / 2)
 }
 
 export const restart = (state$, screen) => {
-  state$.assign("isPlaying", true)
-  state$.assign("ship", "x", getBounds(screen).width / 2 - SHIP / 2)
-  state$.assign("ship", "y", getBounds(screen).height / 2 - SHIP / 2)
-  state$.assign("ship", "vx", 0)
-  state$.assign("ship", "vy", 0)
-  state$.assign("ship", "health", 100)
-  state$.assign("ship", "shield", 0)
-  state$.assign("ship", "rotation", 0)
-  state$.assign("upgrades", UPGRADES)
-  state$.assign("bullets", [])
-  state$.assign("asteroids", [])
-  addAsteroids(state$, getBounds(screen).width / 2, getBounds(screen).height / 2)
+  zeroOut(state$, screen)
 }
 
 const generateBullet = (state$, theta) => {

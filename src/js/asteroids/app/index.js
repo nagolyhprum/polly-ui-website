@@ -41,8 +41,9 @@ export default screen => {
     setDirty()
   })
   background("black")
-  container(MATCH, MATCH, view => {
-    margin(0, 0, 0, 200)
+  container(640, 480, view => {
+    anchor(1, .5)
+    position(1, .5)
     background("red")
     ship(screen)
     container(MATCH, MATCH, () => {
@@ -94,7 +95,7 @@ const upgrades = screen => {
     category : "weapons",
     subcategory : "back"
   }], [{
-    name : "Front Thruster",
+    name : "Reverse",
     category : "movement",
     subcategory : "back"
   }, {
@@ -217,7 +218,6 @@ const ship = screen => {
   const { ship } = state$.get()
   container(ship.width, ship.height, view => {
     // background("blue")
-    observe(state$.prop("isPlaying"), visibility)
     src(ShipImg, "trim")
     observe(state$.prop("ship"), pos => {
       view.x = pos.x
